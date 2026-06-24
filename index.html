@@ -1338,40 +1338,38 @@ function searchAddr(q, ddId, field){
   if(!q||q.trim().length<1){dd.classList.remove('open');dd.innerHTML='';return;}
   if(addrSearchTimer[field]){clearTimeout(addrSearchTimer[field]);}
   addrSearchTimer[field]=setTimeout(function(){
-    fetch('https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address',{
-      method:'POST',
-      mode:'cors',
-      headers:{
-        'Content-Type':'application/json',
-        'Accept':'application/json',
-        'Authorization':'Token 01e6d13f2c49b68cebdea1aaef8e9f95328f94ba',
-        'X-Secret':'877c7dfc2254cb63b9f97ea5cc83a944e33cc3e2'
-      },
-      body:JSON.stringify({query:q,count:8,locations:[{region:"Москва"},{region:"Московская"}]})
-    })
-    .then(function(r){return r.json();})
-    .then(function(res){
-      var suggestions=(res&&res.suggestions)||[];
+    // Два запроса параллельно: Москва и МО
+    var u1='https://nominatim.openstreetmap.org/search?q='+encodeURIComponent(q+' Москва')+'&format=jsonv2&addressdetails=1&limit=5&countrycodes=ru&accept-language=ru&dedupe=1';
+    var u2='https://nominatim.openstreetmap.org/search?q='+encodeURIComponent(q)+'&format=jsonv2&addressdetails=1&limit=5&countrycodes=ru&accept-language=ru&dedupe=1&viewbox=36.0,56.4,38.8,55.1&bounded=0';
+    var h={'Accept-Language':'ru'};
+    Promise.all([
+      fetch(u1,{headers:h}).then(function(r){return r.json();}).catch(function(){return[];}),
+      fetch(u2,{headers:h}).then(function(r){return r.json();}).catch(function(){return[];})
+    ]).then(function(rr){
+      var seen={},data=[];
+      (rr[0]||[]).forEach(function(d){if(!seen[d.place_id]){seen[d.place_id]=1;d._msk=true;data.push(d);}});
+      (rr[1]||[]).forEach(function(d){if(!seen[d.place_id]){seen[d.place_id]=1;d._msk=false;data.push(d);}});
+      data.sort(function(a,b){
+        function sc(d){var a=d.address||{},s=d._msk?50:0;if(a.city==='Москва')s+=20;if((d.display_name||'').indexOf('Москва')>=0)s+=10;if(a.house_number)s+=5;if(a.road)s+=3;return s;}
+        return sc(b)-sc(a);
+      });
       dd.innerHTML='';
-      if(!suggestions.length){
-        dd.innerHTML='<div class="addr-dd-item"><div class="addr-dd-sub">Ничего не найдено</div></div>';
+      if(!data.length){
+        dd.innerHTML='<div class="addr-dd-item"><div class="addr-dd-sub">Ничего не найдено — уточните адрес</div></div>';
         dd.classList.add('open'); return;
       }
-      suggestions.forEach(function(s){
-        var lat=s.data&&s.data.geo_lat?parseFloat(s.data.geo_lat):null;
-        var lon=s.data&&s.data.geo_lon?parseFloat(s.data.geo_lon):null;
-        var main=(s.value||'')
-          .replace(/^Россия, /,'')
-          .replace(/^г Москва, /,'')
-          .replace(/^Москва, /,'');
-        var city=(s.data&&(s.data.city||s.data.region))||'';
-        var inside=lat&&lon?isInsideMkad(lat,lon):true;
+      data.slice(0,7).forEach(function(d){
+        var a=d.address||{};
+        var main=(a.road||a.pedestrian||a.suburb||d.display_name.split(',')[0]).trim();
+        if(a.house_number) main+=', '+a.house_number;
+        var sub=(a.city||a.town||a.village||a.county||'').trim();
+        var lat=parseFloat(d.lat), lon=parseFloat(d.lon);
+        var inside=isInsideMkad(lat,lon);
         var item=document.createElement('div');
         item.className='addr-dd-item';
-        item.innerHTML='<div class="addr-dd-main">'+(inside?'⌂':'❌ <b style="color:var(--orange)">за МКАД</b> · ')+main+'</div>'+(city&&city!='Москва'?'<div class="addr-dd-sub">'+city+'</div>':'');
+        item.innerHTML='<div class="addr-dd-main">'+(inside?'🏠':'📍 <b style="color:var(--orange)">за МКАД</b> · ')+main+'</div><div class="addr-dd-sub">'+sub+'</div>';
         item.addEventListener('mousedown',function(e){
           e.preventDefault();
-          if(!lat||!lon)return;
           document.getElementById(ddId.replace('Dd','')).value=main;
           addrSelected[field]={name:main,lat:lat,lon:lon,inside:inside};
           dd.classList.remove('open');
@@ -1384,9 +1382,6 @@ function searchAddr(q, ddId, field){
         });
         dd.appendChild(item);
       });
-      dd.classList.add('open');
-    }).catch(function(){
-      dd.innerHTML='<div class="addr-dd-item"><div class="addr-dd-sub">Ошибка поиска</div></div>';
       dd.classList.add('open');
     });
   }, 200);
