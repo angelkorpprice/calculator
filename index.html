@@ -25,7 +25,7 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:var(--gray);co
 .header-phone{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:1px}
 .header-phone a{color:var(--white);text-decoration:none;font-size:18px;font-weight:700}
 .header-phone span{font-size:11px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.05em}
-.page{max-width:1320px;margin:0 auto;padding:10px 20px 16px;display:grid;grid-template-columns:340px 1fr 260px;gap:14px;align-items:start}
+.page{max-width:1320px;margin:0 auto;padding:10px 20px 16px;display:grid;grid-template-columns:300px 1fr 270px;gap:14px;align-items:start}
 @media(max-width:1100px){.page{grid-template-columns:1fr 1fr}}
 @media(max-width:720px){.page{grid-template-columns:1fr}}
 .card{background:var(--white);border-radius:var(--r);box-shadow:var(--shadow);padding:10px 14px;margin-bottom:8px}
@@ -393,32 +393,33 @@ input{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
     <!-- АДРЕСА И КМ-СЧЁТЧИК -->
     <div class="addr-card" id="addrCard">
       <div class="card-hd">📍 Маршрут и расстояние</div>
-      <!-- Адреса: A и B в одну строку -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-        <div class="addr-row" style="margin-bottom:0">
-          <div class="addr-icon from">A</div>
-          <div class="addr-wrap">
-            <input class="addr-input" id="addrFrom" autocomplete="off" placeholder="Город, улица, дом…">
-            <div class="addr-dd" id="addrFromDd"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start">
+        <div>
+          <div class="addr-row">
+            <div class="addr-icon from">A</div>
+            <div class="addr-wrap">
+              <input class="addr-input" id="addrFrom" autocomplete="off" placeholder="Город, улица, дом…">
+              <div class="addr-dd" id="addrFromDd"></div>
+            </div>
           </div>
-        </div>
-        <div class="addr-row" style="margin-bottom:0">
-          <div class="addr-icon to">B</div>
-          <div class="addr-wrap">
-            <input class="addr-input" id="addrTo" autocomplete="off" placeholder="Город, улица, дом…">
-            <div class="addr-dd" id="addrToDd"></div>
+          <div class="addr-row" style="margin-bottom:0"><div class="addr-connector"><div class="addr-connector-line"></div></div></div>
+          <div class="addr-row" style="margin-top:0">
+            <div class="addr-icon to">B</div>
+            <div class="addr-wrap">
+              <input class="addr-input" id="addrTo" autocomplete="off" placeholder="Город, улица, дом…">
+              <div class="addr-dd" id="addrToDd"></div>
+            </div>
           </div>
+          <button class="km-route-btn" id="calcRouteBtn" disabled>🗺 Рассчитать расстояние</button>
         </div>
-      </div>
-      <button class="km-route-btn" id="calcRouteBtn" disabled style="margin-bottom:8px">🗺 Рассчитать расстояние</button>
-      <!-- Карта на всю ширину -->
-      <div class="map-picker" id="mapPicker">
-        <div class="map-mode-bar">
-          <button class="map-mode-btn active" id="mapModeFrom" data-mode="from"><span class="map-mode-dot from"></span> Указать подачу (A)</button>
-          <button class="map-mode-btn" id="mapModeTo" data-mode="to"><span class="map-mode-dot to"></span> Указать выгрузку (B)</button>
+        <div class="map-picker" id="mapPicker">
+          <div class="map-mode-bar">
+            <button class="map-mode-btn active" id="mapModeFrom" data-mode="from"><span class="map-mode-dot from"></span> Подача (A)</button>
+            <button class="map-mode-btn" id="mapModeTo" data-mode="to"><span class="map-mode-dot to"></span> Выгрузка (B)</button>
+          </div>
+          <div id="routeMap"></div>
+          <div class="map-hint" id="mapHint">Кликните — точка <b>подачи (A)</b></div>
         </div>
-        <div id="routeMap"></div>
-        <div class="map-hint" id="mapHint">Кликните на карте, чтобы поставить точку <b>подачи (A)</b></div>
       </div>
 
       <!-- Счётчик км -->
@@ -914,17 +915,15 @@ function buildSvcDd(q){
 
 
 function addRetailItem(name,cat,price,isKm){
+  // For retail, kmRate comes from razovy map for km services
   var kmRate='';
-  if(cat==='ЭВАКУАЦИЯ'){
-    // Все виды эвакуации получают км-ставку
-    if(clientType==='razovy') kmRate='110 ₽/км';
-    else if(clientType==='klubny') kmRate='55 ₽/км';
-  } else if(cat==='ТЕХНИЧЕСКАЯ ПОМОЩЬ'){
-    kmRate=(clientType==='razovy'?'100 ₽/км':(clientType==='klubny'?'50 ₽/км':''));
-  } else if(cat==='МАНИПУЛЯТОР'){
-    kmRate=(clientType==='razovy'?'125 ₽/км':(clientType==='klubny'?'65 ₽/км':''));
-  } else if(cat==='ГРУЗОВОЙ ЭВАКУАТОР'){
-    kmRate=(clientType==='razovy'?'185 ₽/км':(clientType==='klubny'?'90 ₽/км':''));
+  if(cat==='ЭВАКУАЦИЯ'||cat==='ТЕХНИЧЕСКАЯ ПОМОЩЬ'){
+    // Check razovy_services for embedded km
+    if(clientType==='razovy') kmRate=D.razovy[name+' (за 1 км)']||D.razovy['Выезд за МКАД (эвакуатор, за 1 км)']||'';
+    if(cat==='ТЕХНИЧЕСКАЯ ПОМОЩЬ') kmRate=(clientType==='razovy'?'100 ₽/км':(clientType==='klubny'?'50 ₽/км':''));
+    if(cat==='ЭВАКУАЦИЯ'&&(name.includes('до 1 400')||name.includes('1 400–2 800')||name.includes('2 800–5 000'))){
+      kmRate=(clientType==='razovy'?'110 ₽/км':(clientType==='klubny'?'55 ₽/км':''));
+    }
   }
   items.push({id:++uid,name:name,cat:cat,price:price,isKm:false,km:kmRate&&globalMkadKm>0?String(globalMkadKm):'',kmRate:kmRate,isAuto:false,carLabel:''});
   renderList();
@@ -1341,37 +1340,47 @@ function searchAddr(q, ddId, field){
   addrSearchTimer[field]=setTimeout(function(){
     fetch('https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address',{
       method:'POST',
-      headers:{'Content-Type':'application/json','Accept':'application/json','Authorization':'Token 01e6d13f2c49b68cebdea1aaef8e9f95328f94ba'},
-      body:JSON.stringify({query:q,count:8,locations:[{country:'ru',region:'Москва'},{'country':'ru','region':'Московская'}],restrict_value:false})
+      mode:'cors',
+      headers:{
+        'Content-Type':'application/json',
+        'Accept':'application/json',
+        'Authorization':'Token 01e6d13f2c49b68cebdea1aaef8e9f95328f94ba',
+        'X-Secret':'877c7dfc2254cb63b9f97ea5cc83a944e33cc3e2'
+      },
+      body:JSON.stringify({query:q,count:8,locations:[{region:"Москва"},{region:"Московская"}]})
     })
     .then(function(r){return r.json();})
     .then(function(res){
       var suggestions=(res&&res.suggestions)||[];
       dd.innerHTML='';
       if(!suggestions.length){
-        dd.innerHTML='<div class="addr-dd-item"><div class="addr-dd-sub">Ничего не найдено — уточните адрес</div></div>';
+        dd.innerHTML='<div class="addr-dd-item"><div class="addr-dd-sub">Ничего не найдено</div></div>';
         dd.classList.add('open'); return;
       }
       suggestions.forEach(function(s){
         var lat=s.data&&s.data.geo_lat?parseFloat(s.data.geo_lat):null;
         var lon=s.data&&s.data.geo_lon?parseFloat(s.data.geo_lon):null;
-        // Короткое название: убираем "Россия, Москва," из начала
-        var full=s.value||'';
-        var main=full.replace(/^Россия,\s*/,'').replace(/^г\s+Москва,\s*/,'').replace(/^Москва,\s*/,'');
-        var city=s.data&&s.data.city||s.data&&s.data.region||'';
+        var main=(s.value||'')
+          .replace(/^Россия, /,'')
+          .replace(/^г Москва, /,'')
+          .replace(/^Москва, /,'');
+        var city=(s.data&&(s.data.city||s.data.region))||'';
         var inside=lat&&lon?isInsideMkad(lat,lon):true;
         var item=document.createElement('div');
         item.className='addr-dd-item';
-        item.innerHTML='<div class="addr-dd-main">'+(inside?'🏠':'📍 <b style="color:var(--orange)">за МКАД</b> · ')+main+'</div>'+(city&&city!=='Москва'?'<div class="addr-dd-sub">'+city+'</div>':'');
+        item.innerHTML='<div class="addr-dd-main">'+(inside?'⌂':'❌ <b style="color:var(--orange)">за МКАД</b> · ')+main+'</div>'+(city&&city!='Москва'?'<div class="addr-dd-sub">'+city+'</div>':'');
         item.addEventListener('mousedown',function(e){
           e.preventDefault();
-          if(!lat||!lon){return;}
+          if(!lat||!lon)return;
           document.getElementById(ddId.replace('Dd','')).value=main;
           addrSelected[field]={name:main,lat:lat,lon:lon,inside:inside};
           dd.classList.remove('open');
           checkRouteReady();
           setMapMarker(field,lat,lon,main);
-          if(field==='from'){var si=document.getElementById('stoAddrIn');if(si&&!stoLat){si.value=main;stoLat=lat;stoLng=lon;document.getElementById('stoGeoHint').textContent='✓ Адрес подачи';updateStoPanel();}}
+          if(field==='from'){
+            var si=document.getElementById('stoAddrIn');
+            if(si&&!stoLat){si.value=main;stoLat=lat;stoLng=lon;document.getElementById('stoGeoHint').textContent='✓ Адрес подачи';updateStoPanel();}
+          }
         });
         dd.appendChild(item);
       });
@@ -1796,24 +1805,23 @@ function updateStoPanel(){
     if(t)clearTimeout(t);
     if(!q){dd.style.display='none';return;}
     t=setTimeout(function(){
-      fetch('https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json','Authorization':'Token 01e6d13f2c49b68cebdea1aaef8e9f95328f94ba'},body:JSON.stringify({query:q,count:7,locations:[{country:'ru',region:'Москва'}]})})
+      fetch('https://nominatim.openstreetmap.org/search?q='+encodeURIComponent(q)+'&format=jsonv2&addressdetails=1&limit=7&countrycodes=ru&accept-language=ru&viewbox=36.0,56.4,38.8,55.1&bounded=0',{headers:{'Accept-Language':'ru'}})
         .then(function(r){return r.json();})
-        .then(function(res){
-          var data=(res&&res.suggestions)||[];
+        .then(function(data){
           dd.innerHTML='';
-          if(!data.length){dd.style.display='none';return;}
-          data.forEach(function(s){
-            var lat=s.data&&s.data.geo_lat?parseFloat(s.data.geo_lat):null;
-            var lon=s.data&&s.data.geo_lon?parseFloat(s.data.geo_lon):null;
-            var main=(s.value||'').replace(/^Россия,\s*/,'').replace(/^г\s+Москва,\s*/,'').replace(/^Москва,\s*/,'');
+          if(!data||!data.length){dd.style.display='none';return;}
+          data.forEach(function(d){
+            var a=d.address||{};
+            var main=(a.road||d.display_name.split(',')[0]).trim();
+            if(a.house_number)main+=', '+a.house_number;
+            var sub=a.city||a.town||'';
             var item=document.createElement('div');
             item.style.cssText='padding:7px 12px;cursor:pointer;font-size:13px;border-top:1px solid #f0f0f0';
-            item.innerHTML='<div style="font-weight:600">'+main+'</div>';
+            item.innerHTML='<div style="font-weight:600">'+main+'</div><div style="font-size:11px;color:#888">'+sub+'</div>';
             item.addEventListener('mousedown',function(e){
               e.preventDefault();
-              if(!lat||!lon)return;
               inp.value=main;
-              stoLat=lat;stoLng=lon;
+              stoLat=parseFloat(d.lat);stoLng=parseFloat(d.lon);
               document.getElementById('stoGeoHint').textContent='✓ '+main;
               dd.style.display='none';
               updateStoPanel();
