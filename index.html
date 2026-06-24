@@ -177,7 +177,7 @@ input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(245,192,0,.15)}
 .addr-wrap{flex:1;position:relative}
 .addr-input{width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--r);color:var(--text);font-size:14px;background:var(--white);outline:none;transition:border-color .15s,box-shadow .15s;font-family:inherit}
 .addr-input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(245,192,0,.15)}
-.addr-dd{position:absolute;left:0;right:0;top:calc(100% + 4px);background:var(--white);border:1.5px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow-lg);z-index:500;max-height:220px;overflow-y:auto;display:none}
+.addr-dd{position:absolute;left:0;right:auto;min-width:300px;top:calc(100% + 4px);background:var(--white);border:1.5px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow-lg);z-index:9999;max-height:260px;overflow-y:auto;display:none}
 .addr-dd.open{display:block}
 .addr-dd-item{padding:8px 12px;font-size:13px;color:var(--text2);cursor:pointer;border-top:1px solid var(--gray);transition:background .1s}
 .addr-dd-item:first-child{border-top:none}
@@ -393,33 +393,32 @@ input{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
     <!-- АДРЕСА И КМ-СЧЁТЧИК -->
     <div class="addr-card" id="addrCard">
       <div class="card-hd">📍 Маршрут и расстояние</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start">
-        <div>
-          <div class="addr-row">
-            <div class="addr-icon from">A</div>
-            <div class="addr-wrap">
-              <input class="addr-input" id="addrFrom" autocomplete="off" placeholder="Город, улица, дом…">
-              <div class="addr-dd" id="addrFromDd"></div>
-            </div>
+      <!-- Адреса A и B рядом на полную ширину -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+        <div class="addr-row" style="margin-bottom:0">
+          <div class="addr-icon from">A</div>
+          <div class="addr-wrap">
+            <input class="addr-input" id="addrFrom" autocomplete="off" placeholder="Город, улица, дом…">
+            <div class="addr-dd" id="addrFromDd"></div>
           </div>
-          <div class="addr-row" style="margin-bottom:0"><div class="addr-connector"><div class="addr-connector-line"></div></div></div>
-          <div class="addr-row" style="margin-top:0">
-            <div class="addr-icon to">B</div>
-            <div class="addr-wrap">
-              <input class="addr-input" id="addrTo" autocomplete="off" placeholder="Город, улица, дом…">
-              <div class="addr-dd" id="addrToDd"></div>
-            </div>
-          </div>
-          <button class="km-route-btn" id="calcRouteBtn" disabled>🗺 Рассчитать расстояние</button>
         </div>
-        <div class="map-picker" id="mapPicker">
-          <div class="map-mode-bar">
-            <button class="map-mode-btn active" id="mapModeFrom" data-mode="from"><span class="map-mode-dot from"></span> Подача (A)</button>
-            <button class="map-mode-btn" id="mapModeTo" data-mode="to"><span class="map-mode-dot to"></span> Выгрузка (B)</button>
+        <div class="addr-row" style="margin-bottom:0">
+          <div class="addr-icon to">B</div>
+          <div class="addr-wrap">
+            <input class="addr-input" id="addrTo" autocomplete="off" placeholder="Город, улица, дом…">
+            <div class="addr-dd" id="addrToDd"></div>
           </div>
-          <div id="routeMap"></div>
-          <div class="map-hint" id="mapHint">Кликните — точка <b>подачи (A)</b></div>
         </div>
+      </div>
+      <button class="km-route-btn" id="calcRouteBtn" disabled style="margin-bottom:8px">🗺 Рассчитать расстояние</button>
+      <!-- Карта на всю ширину -->
+      <div class="map-picker" id="mapPicker">
+        <div class="map-mode-bar">
+          <button class="map-mode-btn active" id="mapModeFrom" data-mode="from"><span class="map-mode-dot from"></span> Подача (A)</button>
+          <button class="map-mode-btn" id="mapModeTo" data-mode="to"><span class="map-mode-dot to"></span> Выгрузка (B)</button>
+        </div>
+        <div id="routeMap"></div>
+        <div class="map-hint" id="mapHint">Кликните — точка <b>подачи (A)</b></div>
       </div>
 
       <!-- Счётчик км -->
