@@ -110,7 +110,7 @@ input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(245,192,0,.15)}
 .km-field input{width:86px;padding:5px 8px;font-size:13px;border-color:var(--gold)}
 .km-rate{font-size:12px;color:var(--orange);background:rgba(212,96,10,.08);padding:2px 8px;border-radius:4px}
 .km-sub{font-size:13px;font-weight:700;color:var(--orange);margin-left:auto}
-.total-card{background:var(--black);border-radius:var(--r);padding:12px 14px;color:var(--white);position:sticky;top:10px}
+.total-card{background:var(--black);border-radius:var(--r);padding:12px 14px;color:var(--white)}
 .total-lbl{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;opacity:.4;margin-bottom:6px}
 .total-sum{font-size:38px;font-weight:800;color:var(--gold);letter-spacing:-.01em;line-height:1}
 .total-empty{font-size:14px;opacity:.3;font-style:italic}
@@ -390,11 +390,14 @@ input{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
       </div>
     </div>
 
+  </div>
+
+  <div>
     <!-- АДРЕСА И КМ-СЧЁТЧИК -->
     <div class="addr-card" id="addrCard">
       <div class="card-hd">📍 Маршрут и расстояние</div>
-      <!-- Адреса A и B рядом на полную ширину -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+      <!-- Адреса A и B вертикально -->
+      <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px">
         <div class="addr-row" style="margin-bottom:0">
           <div class="addr-icon from">A</div>
           <div class="addr-wrap">
@@ -437,9 +440,7 @@ input{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
         <div class="km-note" id="kmRouteNote"></div>
       </div>
     </div>
-  </div>
 
-  <div>
     <div class="card">
       <div class="card-hd">🔧 Добавить услугу</div>
       <div class="car-hint" id="carHint">
@@ -1261,7 +1262,7 @@ function estimateJamsByTime(timeEl, mainEl, subEl, iconEl, badgeEl, card){
 // ===== АДРЕСА И КМ-СЧЁТЧИК (поиск как в Яндекс.Картах) =====
 
 // МКАД полигон [lon, lat], 64 точки
-var MKAD_POLY=[[37.842,55.774],[37.849,55.759],[37.853,55.744],[37.852,55.730],[37.847,55.716],[37.836,55.704],[37.822,55.693],[37.805,55.683],[37.786,55.675],[37.765,55.668],[37.743,55.663],[37.720,55.660],[37.697,55.659],[37.674,55.659],[37.651,55.661],[37.628,55.665],[37.606,55.671],[37.586,55.679],[37.567,55.688],[37.551,55.699],[37.537,55.711],[37.526,55.724],[37.518,55.737],[37.514,55.751],[37.513,55.765],[37.516,55.779],[37.522,55.792],[37.532,55.804],[37.545,55.814],[37.561,55.823],[37.579,55.831],[37.599,55.837],[37.621,55.841],[37.643,55.843],[37.666,55.844],[37.689,55.843],[37.711,55.840],[37.733,55.836],[37.753,55.830],[37.772,55.822],[37.789,55.813],[37.804,55.803],[37.817,55.792],[37.827,55.780],[37.834,55.767],[37.838,55.753],[37.839,55.739],[37.836,55.725],[37.830,55.712],[37.820,55.700],[37.807,55.690],[37.792,55.681],[37.775,55.673],[37.755,55.667],[37.734,55.662],[37.712,55.659],[37.689,55.658],[37.666,55.659],[37.644,55.662],[37.622,55.667],[37.601,55.674],[37.582,55.683],[37.564,55.693],[37.549,55.705]];
+var MKAD_POLY=[[37.321,55.895],[37.373,55.900],[37.430,55.897],[37.487,55.893],[37.543,55.891],[37.600,55.892],[37.654,55.889],[37.707,55.882],[37.754,55.869],[37.793,55.851],[37.820,55.832],[37.835,55.812],[37.840,55.792],[37.840,55.770],[37.836,55.748],[37.826,55.726],[37.811,55.704],[37.792,55.683],[37.769,55.663],[37.744,55.645],[37.717,55.629],[37.688,55.616],[37.657,55.607],[37.624,55.600],[37.590,55.596],[37.555,55.595],[37.520,55.597],[37.487,55.603],[37.456,55.613],[37.428,55.626],[37.405,55.641],[37.388,55.658],[37.375,55.676],[37.368,55.695],[37.367,55.714],[37.372,55.734],[37.381,55.753],[37.394,55.771],[37.411,55.788],[37.432,55.804],[37.456,55.819],[37.482,55.833],[37.510,55.846],[37.540,55.857],[37.570,55.867],[37.578,55.893]];
 var MKAD_CENTER = {lat:55.751, lon:37.683};
 var MKAD_RADIUS_KM = 18.5;
 
@@ -1425,6 +1426,7 @@ function calcRoute(){
   routeKm(f.lat,f.lon,t.lat,t.lon,function(totalKm){
     // 2) Расчёт участка за МКАД
     computeMkadKm(f,t,function(mkadKm){
+      mkadKm=Math.min(mkadKm, totalKm); // не может быть больше общего маршрута
       showKmResult(totalKm,mkadKm,f.name,t.name);
       btn.textContent='🗺 Рассчитать расстояние'; btn.disabled=false;
     });
@@ -1466,9 +1468,10 @@ function computeMkadKm(f,t,cb){
     // откуда внутри, куда за МКАД — от МКАД до точки Б
     outerLeg(t,function(km){cb(km);});
   } else {
-    // обе за МКАД — берём прямой маршрут между ними целиком как «за МКАД»
-    // (плюс участки до кольца с каждой стороны, но не двойной учёт)
-    routeKm(f.lat,f.lon,t.lat,t.lon,function(km){cb(km);});
+    // обе за МКАД — берём наибольший участок от одной точки до МКАД
+    outerLeg(f,function(km1){
+      outerLeg(t,function(km2){cb(Math.max(km1,km2));});
+    });
   }
 }
 
