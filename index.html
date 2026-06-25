@@ -1338,52 +1338,74 @@ function searchAddr(q, ddId, field){
   if(!q||q.trim().length<1){dd.classList.remove('open');dd.innerHTML='';return;}
   if(addrSearchTimer[field]){clearTimeout(addrSearchTimer[field]);}
   addrSearchTimer[field]=setTimeout(function(){
-    // Два запроса параллельно: Москва и МО
-    var u1='https://nominatim.openstreetmap.org/search?q='+encodeURIComponent(q+' Москва')+'&format=jsonv2&addressdetails=1&limit=5&countrycodes=ru&accept-language=ru&dedupe=1';
-    var u2='https://nominatim.openstreetmap.org/search?q='+encodeURIComponent(q)+'&format=jsonv2&addressdetails=1&limit=5&countrycodes=ru&accept-language=ru&dedupe=1&viewbox=36.0,56.4,38.8,55.1&bounded=0';
-    var h={'Accept-Language':'ru'};
-    Promise.all([
-      fetch(u1,{headers:h}).then(function(r){return r.json();}).catch(function(){return[];}),
-      fetch(u2,{headers:h}).then(function(r){return r.json();}).catch(function(){return[];})
-    ]).then(function(rr){
-      var seen={},data=[];
-      (rr[0]||[]).forEach(function(d){if(!seen[d.place_id]){seen[d.place_id]=1;d._msk=true;data.push(d);}});
-      (rr[1]||[]).forEach(function(d){if(!seen[d.place_id]){seen[d.place_id]=1;d._msk=false;data.push(d);}});
-      data.sort(function(a,b){
-        function sc(d){var a=d.address||{},s=d._msk?50:0;if(a.city==='Москва')s+=20;if((d.display_name||'').indexOf('Москва')>=0)s+=10;if(a.house_number)s+=5;if(a.road)s+=3;return s;}
-        return sc(b)-sc(a);
-      });
-      dd.innerHTML='';
-      if(!data.length){
-        dd.innerHTML='<div class="addr-dd-item"><div class="addr-dd-sub">Ничего не найдено — уточните адрес</div></div>';
-        dd.classList.add('open'); return;
-      }
-      data.slice(0,7).forEach(function(d){
-        var a=d.address||{};
-        var main=(a.road||a.pedestrian||a.suburb||d.display_name.split(',')[0]).trim();
-        if(a.house_number) main+=', '+a.house_number;
-        var sub=(a.city||a.town||a.village||a.county||'').trim();
-        var lat=parseFloat(d.lat), lon=parseFloat(d.lon);
-        var inside=isInsideMkad(lat,lon);
-        var item=document.createElement('div');
-        item.className='addr-dd-item';
-        item.innerHTML='<div class="addr-dd-main">'+(inside?'🏠':'📍 <b style="color:var(--orange)">за МКАД</b> · ')+main+'</div><div class="addr-dd-sub">'+sub+'</div>';
-        item.addEventListener('mousedown',function(e){
-          e.preventDefault();
-          document.getElementById(ddId.replace('Dd','')).value=main;
-          addrSelected[field]={name:main,lat:lat,lon:lon,inside:inside};
-          dd.classList.remove('open');
-          checkRouteReady();
-          setMapMarker(field,lat,lon,main);
-          if(field==='from'){
-            var si=document.getElementById('stoAddrIn');
-            if(si&&!stoLat){si.value=main;stoLat=lat;stoLng=lon;document.getElementById('stoGeoHint').textContent='✓ Адрес подачи';updateStoPanel();}
-          }
+    var url='https://catalog.api.2gis.com/3.0/suggests'
+      +'?q='+encodeURIComponent(q)
+      +'&key=4fe6c91f-b43e-4fa8-9dcc-d3d26536a76e'
+      +'&locale=ru_RU'
+      +'&type=building,street,attraction,crossroad'
+      +'&location=37.618,55.752'
+      +'&fields=items.point,items.full_name,items.address_name,items.address';
+    fetch(url)
+      .then(function(r){return r.json();})
+      .then(function(res){
+        var items=(res&&res.result&&res.result.items)||[];
+        dd.innerHTML='';
+        if(!items.length){
+          dd.innerHTML='<div class="addr-dd-item"><div class="addr-dd-sub">Ничего не найдено</div></div>';
+          dd.classList.add('open'); return;
+        }
+        items.forEach(function(s){
+          var pt=s.point;
+          if(!pt||!pt.lat||!pt.lon)return;
+          var lat=parseFloat(pt.lat), lon=parseFloat(pt.lon);
+          var main=(s.full_name||'').replace(/^Россия, /,'').replace(/^Москва, /,'');
+          var sub=s.address&&s.address.city||'';
+          var inside=isInsideMkad(lat,lon);
+          var item=document.createElement('div');
+          item.className='addr-dd-item';
+          item.innerHTML='<div class="addr-dd-main">'+(inside?'⌂':'<b style="color:var(--orange)">за МКАД</b> · ')+main+'</div>'+(sub&&sub!='Москва'?'<div class="addr-dd-sub">'+sub+'</div>':'');
+          item.addEventListener('mousedown',function(e){
+            e.preventDefault();
+            document.getElementById(ddId.replace('Dd','')).value=main;
+            addrSelected[field]={name:main,lat:lat,lon:lon,inside:inside};
+            dd.classList.remove('open');
+            checkRouteReady();
+            setMapMarker(field,lat,lon,main);
+            if(field==='from'){
+              var si=document.getElementById('stoAddrIn');
+              if(si&&!stoLat){si.value=main;stoLat=lat;stoLng=lon;document.getElementById('stoGeoHint').textContent='✓ Адрес подачи';updateStoPanel();}
+            }
+          });
+          dd.appendChild(item);
         });
-        dd.appendChild(item);
+        dd.classList.add('open');
+      }).catch(function(){
+        fetch('https://nominatim.openstreetmap.org/search?q='+encodeURIComponent(q+' Москва')+'&format=jsonv2&addressdetails=1&limit=6&countrycodes=ru&accept-language=ru',{headers:{'Accept-Language':'ru'}})
+          .then(function(r){return r.json();})
+          .then(function(data){
+            dd.innerHTML='';
+            if(!data||!data.length){dd.innerHTML='<div class="addr-dd-item"><div class="addr-dd-sub">Ничего не найдено</div></div>';dd.classList.add('open');return;}
+            data.slice(0,6).forEach(function(d){
+              var a=d.address||{},lat=parseFloat(d.lat),lon=parseFloat(d.lon);
+              var main=(a.road||a.pedestrian||d.display_name.split(',')[0]).trim();
+              if(a.house_number)main+=', '+a.house_number;
+              var sub=(a.city||a.town||'').trim();
+              var inside=isInsideMkad(lat,lon);
+              var item=document.createElement('div');
+              item.className='addr-dd-item';
+              item.innerHTML='<div class="addr-dd-main">'+(inside?'⌂':'<b style="color:var(--orange)">за МКАД</b> · ')+main+'</div><div class="addr-dd-sub">'+sub+'</div>';
+              item.addEventListener('mousedown',function(e){
+                e.preventDefault();
+                document.getElementById(ddId.replace('Dd','')).value=main;
+                addrSelected[field]={name:main,lat:lat,lon:lon,inside:inside};
+                dd.classList.remove('open');checkRouteReady();setMapMarker(field,lat,lon,main);
+                if(field==='from'){var si=document.getElementById('stoAddrIn');if(si&&!stoLat){si.value=main;stoLat=lat;stoLng=lon;document.getElementById('stoGeoHint').textContent='✓ Адрес подачи';updateStoPanel();}}
+              });
+              dd.appendChild(item);
+            });
+            dd.classList.add('open');
+          }).catch(function(){dd.innerHTML='<div class="addr-dd-item"><div class="addr-dd-sub">Ошибка поиска</div></div>';dd.classList.add('open');});
       });
-      dd.classList.add('open');
-    });
   }, 200);
 }
 
