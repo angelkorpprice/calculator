@@ -1411,6 +1411,7 @@ function searchAddr(q, ddId, field){
 
 document.getElementById('addrFrom').addEventListener('input',function(){
   addrSelected.from=null;
+  console.log('addrFrom input:', this.value);
   searchAddr(this.value,'addrFromDd','addrFrom');
   checkRouteReady();
 });
